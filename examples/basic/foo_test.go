@@ -3,15 +3,19 @@ package foo
 import (
 	"fmt"
 	"testing"
-	"github.com/qiniu/mockhttp"
+
+	"github.com/qiniu/mockhttp.v2"
+	"github.com/qiniu/rpc"
 )
 
 func TestBasic(t *testing.T) {
 
 	svr := new(Service)
-	mockhttp.Bind("foo.com", svr)
+	svr.RegisterRoute()
 
-	c := mockhttp.Client
+	mockhttp.ListenAndServe("foo.com", nil)
+
+	c := rpc.Client{mockhttp.DefaultClient}
 	{
 		var foo FooRet
 		err := c.Call(nil, &foo, "http://foo.com/foo")
@@ -37,4 +41,3 @@ func TestBasic(t *testing.T) {
 }
 
 // --------------------------------------------------------------------
-
