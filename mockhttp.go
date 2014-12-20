@@ -11,6 +11,10 @@ import (
 	"github.com/qiniu/log"
 )
 
+var (
+	ErrServerNotFound = errors.New("server not found")
+)
+
 // --------------------------------------------------------------------
 
 type mockServerRequestBody struct {
@@ -31,22 +35,30 @@ func (r *mockServerRequestBody) Close() error {
 }
 
 // --------------------------------------------------------------------
-
-var ErrServerNotFound = errors.New("server not found")
-
-var Route = map[string]http.Handler{}
-
-// --------------------------------------------------------------------
 // type Transport
 
-type transportImpl struct{}
+type Transport struct{
+	route map[string]http.Handler
+}
 
-var Transport transportImpl
-var DefaultClient = &http.Client{Transport: Transport}
+func NewTransport() *Transport {
 
-func (r transportImpl) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	return &Transport{
+		route: make(map[string]http.Handler),
+	}
+}
 
-	h := Route[req.URL.Host]
+func (p *Transport) ListenAndServe(host string, h http.Handler) {
+
+	if h == nil {
+		h = http.DefaultServeMux
+	}
+	p.route[host] = h
+}
+
+func (p *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+
+	h := p.route[req.URL.Host]
 	if h == nil {
 		log.Warn("Server not found:", req.Host)
 		return nil, ErrServerNotFound
@@ -83,12 +95,12 @@ func (r transportImpl) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 // --------------------------------------------------------------------
 
+var DefaultTransport = NewTransport()
+var DefaultClient = &http.Client{Transport: DefaultTransport}
+
 func ListenAndServe(host string, h http.Handler) {
 
-	if h == nil {
-		h = http.DefaultServeMux
-	}
-	Route[host] = h
+	DefaultTransport.ListenAndServe(host, h)
 }
 
 // --------------------------------------------------------------------
