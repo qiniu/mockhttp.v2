@@ -30,7 +30,10 @@ func (r *mockServerRequestBody) Read(p []byte) (int, error) {
 }
 
 func (r *mockServerRequestBody) Close() error {
-	r.closeSignal = true // 不能正真去关闭reader (因为req逻辑上是client要关闭的)
+	r.closeSignal = true
+	if c, ok := r.reader.(io.Closer); ok {
+		return c.Close()
+	}
 	return nil
 }
 
